@@ -3,7 +3,7 @@
  * Plugin Name: JetBooking SMS Integration
  * Plugin URI: https://github.com/rez4156684-bot/payamakhotel
  * Description: یکپارچه‌سازی اطلاعات رزرو JetBooking با پیامک‌های ووکامرس - افزودن اطلاعات هتل، اتاق و تاریخ‌های ورود و خروج به پیامک‌ها
- * Version: 1.2.0
+ * Version: 1.3.0
  * Author: PayamakHotel Team
  * Author URI: https://github.com/rez4156684-bot
  * Text Domain: jetbooking-sms-integration
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 }
 
 // تعریف ثابت‌های افزونه
-define('JETBOOKING_SMS_VERSION', '1.2.0');
+define('JETBOOKING_SMS_VERSION', '1.3.0');
 define('JETBOOKING_SMS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JETBOOKING_SMS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('JETBOOKING_SMS_DEBUG', false); // برای دیباگ، این را true کنید
@@ -104,6 +104,10 @@ class JetBooking_SMS_Integration {
         // برای افزونه پیامک ایرانی
         add_filter('wp_sms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
         add_filter('wp_sms_msg', array($this, 'add_booking_details_to_sms'), 999, 2);
+
+        // برای افزونه پیامک حرفه ای ووکامرس
+        add_filter('pwsms_sms_body', array($this, 'add_booking_details_to_sms'), 999, 2);
+        add_filter('pwsms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
 
         // برای افزونه Webservice SMS
         add_filter('webservice_sms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
@@ -390,7 +394,8 @@ class JetBooking_SMS_Integration {
                     $key_lower = strtolower($key);
 
                     // شناسایی نام هتل/واحد
-                    if (in_array($key, array('apartment_unit', '_apartment_unit', 'jet_abaf_unit', '_jet_unit_id', 'jet_unit')) ||
+                    // JetABAF Keys: jet_abaf_unit, apartment_unit
+                    if (in_array($key, array('apartment_unit', '_apartment_unit', 'jet_abaf_unit', '_jet_abaf_unit', '_jet_unit_id', 'jet_unit')) ||
                         strpos($key_lower, 'unit') !== false ||
                         strpos($key_lower, 'apartment') !== false) {
                         if (is_numeric($value)) {
@@ -401,7 +406,8 @@ class JetBooking_SMS_Integration {
                     }
 
                     // شناسایی تاریخ ورود
-                    if (in_array($key, array('check_in_date', '_check_in_date', 'apartment_check_in', 'Check in', 'تاریخ ورود', 'checkin', '_checkin', 'check-in', '_check-in')) ||
+                    // JetABAF Keys: apartment_check_in_date, check_in_date
+                    if (in_array($key, array('check_in_date', '_check_in_date', 'apartment_check_in', 'apartment_check_in_date', '_apartment_check_in_date', 'Check in', 'تاریخ ورود', 'checkin', '_checkin', 'check-in', '_check-in')) ||
                         strpos($key_lower, 'check') !== false && strpos($key_lower, 'in') !== false ||
                         strpos($key_lower, 'ورود') !== false ||
                         strpos($key_lower, 'start') !== false && strpos($key_lower, 'date') !== false) {
@@ -409,7 +415,8 @@ class JetBooking_SMS_Integration {
                     }
 
                     // شناسایی تاریخ خروج
-                    if (in_array($key, array('check_out_date', '_check_out_date', 'apartment_check_out', 'Check out', 'تاریخ خروج', 'checkout', '_checkout', 'check-out', '_check-out')) ||
+                    // JetABAF Keys: apartment_check_out_date, check_out_date
+                    if (in_array($key, array('check_out_date', '_check_out_date', 'apartment_check_out', 'apartment_check_out_date', '_apartment_check_out_date', 'Check out', 'تاریخ خروج', 'checkout', '_checkout', 'check-out', '_check-out')) ||
                         strpos($key_lower, 'check') !== false && strpos($key_lower, 'out') !== false ||
                         strpos($key_lower, 'خروج') !== false ||
                         strpos($key_lower, 'end') !== false && strpos($key_lower, 'date') !== false) {
