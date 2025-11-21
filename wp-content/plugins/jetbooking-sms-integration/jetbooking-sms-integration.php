@@ -3,7 +3,7 @@
  * Plugin Name: JetBooking SMS Integration
  * Plugin URI: https://github.com/rez4156684-bot/payamakhotel
  * Description: یکپارچه‌سازی اطلاعات رزرو JetBooking با پیامک‌های ووکامرس - افزودن اطلاعات هتل، اتاق و تاریخ‌های ورود و خروج به پیامک‌ها
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: PayamakHotel Team
  * Author URI: https://github.com/rez4156684-bot
  * Text Domain: jetbooking-sms-integration
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 }
 
 // تعریف ثابت‌های افزونه
-define('JETBOOKING_SMS_VERSION', '1.4.0');
+define('JETBOOKING_SMS_VERSION', '1.5.0');
 define('JETBOOKING_SMS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JETBOOKING_SMS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('JETBOOKING_SMS_DEBUG', false); // برای دیباگ، این را true کنید
@@ -358,6 +358,16 @@ class JetBooking_SMS_Integration {
                         <td><code>{booking_info}</code></td>
                         <td>اطلاعات کامل رزرو</td>
                         <td>همه موارد بالا</td>
+                    </tr>
+                    <tr>
+                        <td><code>{order_number}</code></td>
+                        <td>شماره سفارش</td>
+                        <td>12345</td>
+                    </tr>
+                    <tr>
+                        <td><code>{order_id}</code></td>
+                        <td>شناسه سفارش</td>
+                        <td>67890</td>
                     </tr>
                 </tbody>
             </table>
@@ -952,12 +962,97 @@ define(\'WP_DEBUG_DISPLAY\', false);</pre>';
             $booking_details['hotel_name'] = get_bloginfo('name');
         }
 
+        // اگر تاریخ‌ها خالی هستند، از متادیتای JetABAF استفاده کن
+        if (empty($booking_details['checkin_date']) || empty($booking_details['checkout_date'])) {
+            $this->extract_jetabaf_dates($order, $booking_details);
+        }
+
+        // محاسبه مجدد تعداد شب‌ها اگر تاریخ‌ها پر شده باشند
+        if (!empty($booking_details['checkin_date']) && !empty($booking_details['checkout_date']) && $booking_details['nights'] == 0) {
+            $booking_details['nights'] = $this->calculate_nights(
+                $booking_details['checkin_date'],
+                $booking_details['checkout_date']
+            );
+        }
+
         if (JETBOOKING_SMS_DEBUG) {
             error_log('=== Final Booking Details ===');
             error_log(print_r($booking_details, true));
         }
 
         return $booking_details;
+    }
+
+    /**
+     * استخراج تاریخ‌ها از متادیتای JetABAF
+     *
+     * @param WC_Order $order سفارش
+     * @param array &$booking_details اطلاعات رزرو (به صورت reference)
+     */
+    private function extract_jetabaf_dates($order, &$booking_details) {
+        // دریافت متادیتای JetABAF
+        $jetabaf_details = $order->get_meta('_jet_abaf_wc_details');
+
+        if (JETBOOKING_SMS_DEBUG) {
+            error_log('=== Extracting JetABAF Dates ===');
+            error_log('JetABAF Details: ' . print_r($jetabaf_details, true));
+        }
+
+        if (!empty($jetabaf_details) && is_array($jetabaf_details)) {
+            // بررسی form_data
+            if (!empty($jetabaf_details['form_data']) && is_array($jetabaf_details['form_data'])) {
+                $form_data = $jetabaf_details['form_data'];
+
+                // استخراج تاریخ ورود
+                if (empty($booking_details['checkin_date'])) {
+                    if (!empty($form_data['_check_in_date'])) {
+                        $booking_details['checkin_date'] = $this->format_date($form_data['_check_in_date']);
+                    } elseif (!empty($form_data['check_in_date'])) {
+                        $booking_details['checkin_date'] = $this->format_date($form_data['check_in_date']);
+                    }
+                }
+
+                // استخراج تاریخ خروج
+                if (empty($booking_details['checkout_date'])) {
+                    if (!empty($form_data['_check_out_date'])) {
+                        $booking_details['checkout_date'] = $this->format_date($form_data['_check_out_date']);
+                    } elseif (!empty($form_data['check_out_date'])) {
+                        $booking_details['checkout_date'] = $this->format_date($form_data['check_out_date']);
+                    }
+                }
+
+                // اگر تاریخ‌ها هنوز خالی هستند، از فیلد _dates استفاده کن
+                if ((empty($booking_details['checkin_date']) || empty($booking_details['checkout_date'])) && !empty($form_data['_dates'])) {
+                    $dates = $form_data['_dates'];
+                    // فرمت: 2025/11/21 - 2025/11/22
+                    if (strpos($dates, ' - ') !== false) {
+                        $date_parts = explode(' - ', $dates);
+                        if (count($date_parts) == 2) {
+                            if (empty($booking_details['checkin_date'])) {
+                                $booking_details['checkin_date'] = trim($date_parts[0]);
+                            }
+                            if (empty($booking_details['checkout_date'])) {
+                                $booking_details['checkout_date'] = trim($date_parts[1]);
+                            }
+                        }
+                    }
+                }
+
+                // استخراج شناسه اتاق اگر نام هتل خالی است
+                if (!empty($form_data['room_id']) && empty($booking_details['hotel_name'])) {
+                    $room_name = $this->get_apartment_name($form_data['room_id']);
+                    if (!empty($room_name)) {
+                        $booking_details['hotel_name'] = $room_name;
+                    }
+                }
+            }
+        }
+
+        if (JETBOOKING_SMS_DEBUG) {
+            error_log('After JetABAF extraction:');
+            error_log('Check-in: ' . $booking_details['checkin_date']);
+            error_log('Check-out: ' . $booking_details['checkout_date']);
+        }
     }
 
     /**
@@ -1159,6 +1254,10 @@ define(\'WP_DEBUG_DISPLAY\', false);</pre>';
         $message = str_replace('{nights}', $booking_details['nights'], $message);
         $message = str_replace('{booking_info}', $booking_info, $message);
 
+        // جایگزینی شماره سفارش
+        $message = str_replace('{order_number}', $order->get_order_number(), $message);
+        $message = str_replace('{order_id}', $order->get_id(), $message);
+
         // اگر پیامک فقط شامل کلمه "رزرو" است، کل آن را با اطلاعات رزرو جایگزین کن
         if (trim($message) === 'رزرو' || trim($message) === 'reservation') {
             $message = $booking_info;
@@ -1231,6 +1330,10 @@ define(\'WP_DEBUG_DISPLAY\', false);</pre>';
             $replace['{nights}'] = $booking_details['nights'] ?? 0;
             $replace['{booking_info}'] = $this->format_booking_info($booking_details);
         }
+
+        // اضافه کردن متغیرهای سفارش
+        $replace['{order_number}'] = $order->get_order_number();
+        $replace['{order_id}'] = $order->get_id();
 
         return $replace;
     }
