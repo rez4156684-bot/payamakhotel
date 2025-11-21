@@ -3,7 +3,7 @@
  * Plugin Name: JetBooking SMS Integration
  * Plugin URI: https://github.com/rez4156684-bot/payamakhotel
  * Description: یکپارچه‌سازی اطلاعات رزرو JetBooking با پیامک‌های ووکامرس - افزودن اطلاعات هتل، اتاق و تاریخ‌های ورود و خروج به پیامک‌ها
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: PayamakHotel Team
  * Author URI: https://github.com/rez4156684-bot
  * Text Domain: jetbooking-sms-integration
@@ -22,9 +22,10 @@ if (!defined('ABSPATH')) {
 }
 
 // تعریف ثابت‌های افزونه
-define('JETBOOKING_SMS_VERSION', '1.0.0');
+define('JETBOOKING_SMS_VERSION', '1.1.0');
 define('JETBOOKING_SMS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JETBOOKING_SMS_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('JETBOOKING_SMS_DEBUG', false); // برای دیباگ، این را true کنید
 
 /**
  * کلاس اصلی افزونه یکپارچه‌سازی JetBooking با SMS
@@ -64,27 +65,212 @@ class JetBooking_SMS_Integration {
         // بررسی وجود افزونه‌های مورد نیاز
         add_action('admin_init', array($this, 'check_required_plugins'));
 
+        // اضافه کردن منوی تنظیمات در ووکامرس
+        add_action('admin_menu', array($this, 'add_admin_menu'), 99);
+
         // اضافه کردن اطلاعات رزرو به متادیتای سفارش
         add_action('woocommerce_checkout_create_order', array($this, 'save_booking_data_to_order'), 10, 2);
+        add_action('woocommerce_store_api_checkout_update_order_from_request', array($this, 'save_booking_data_to_order'), 10, 2);
 
-        // فیلترهای مختلف برای افزونه‌های پیامکی مختلف
+        // همچنین در هنگام ایجاد سفارش (برای سفارش‌های دستی)
+        add_action('woocommerce_new_order', array($this, 'save_booking_data_on_new_order'), 10, 1);
+
+        // **فیلترهای مختلف برای افزونه‌های پیامکی مختلف**
+
         // برای افزونه WooCommerce SMS
-        add_filter('woocommerce_sms_message', array($this, 'add_booking_details_to_sms'), 10, 2);
+        add_filter('woocommerce_sms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
 
         // برای افزونه Digits
-        add_filter('digits_wc_sms_message', array($this, 'add_booking_details_to_sms'), 10, 2);
+        add_filter('digits_wc_sms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
 
         // برای افزونه Persian WooCommerce SMS
-        add_filter('persianwoosms_sms_body', array($this, 'add_booking_details_to_sms'), 10, 2);
+        add_filter('persianwoosms_sms_body', array($this, 'add_booking_details_to_sms'), 999, 2);
 
         // برای افزونه YITH WooCommerce SMS Notifications
-        add_filter('ywsn_sms_message_content', array($this, 'add_booking_details_to_sms'), 10, 2);
+        add_filter('ywsn_sms_message_content', array($this, 'add_booking_details_to_sms'), 999, 2);
 
         // فیلتر عمومی برای سایر افزونه‌های پیامکی
-        add_filter('woocommerce_order_sms_message', array($this, 'add_booking_details_to_sms'), 10, 2);
+        add_filter('woocommerce_order_sms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
 
-        // اضافه کردن متغیرهای سفارشی به الگوی پیامک
-        add_filter('woocommerce_email_format_string_replace', array($this, 'add_custom_sms_variables'), 10, 2);
+        // برای افزونه Kavenegar
+        add_filter('kavenegar_sms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
+
+        // برای افزونه SMS.ir
+        add_filter('smsir_wc_message', array($this, 'add_booking_details_to_sms'), 999, 2);
+
+        // برای افزونه Twilio
+        add_filter('twilio_sms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
+
+        // برای افزونه پیامک ایرانی
+        add_filter('wp_sms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
+        add_filter('wp_sms_msg', array($this, 'add_booking_details_to_sms'), 999, 2);
+
+        // برای افزونه Webservice SMS
+        add_filter('webservice_sms_message', array($this, 'add_booking_details_to_sms'), 999, 2);
+
+        // اضافه کردن متغیرهای سفارشی به الگوی ایمیل (بعضی افزونه‌ها از این استفاده می‌کنند)
+        add_filter('woocommerce_email_format_string_replace', array($this, 'add_custom_sms_variables'), 999, 2);
+
+        // برای افزونه‌هایی که از متغیرهای ووکامرس استفاده می‌کنند
+        add_filter('woocommerce_email_format_string', array($this, 'replace_booking_variables'), 999, 2);
+
+        // Action برای دستکاری مستقیم محتوای پیامک قبل از ارسال
+        add_action('woocommerce_order_status_changed', array($this, 'maybe_add_booking_to_sms'), 10, 3);
+    }
+
+    /**
+     * اضافه کردن منوی مدیریت
+     */
+    public function add_admin_menu() {
+        add_submenu_page(
+            'woocommerce',
+            'JetBooking SMS',
+            'JetBooking SMS',
+            'manage_woocommerce',
+            'jetbooking-sms-integration',
+            array($this, 'admin_page')
+        );
+    }
+
+    /**
+     * صفحه مدیریت
+     */
+    public function admin_page() {
+        ?>
+        <div class="wrap">
+            <h1>افزونه یکپارچه‌سازی JetBooking با SMS</h1>
+
+            <div class="card">
+                <h2>✅ وضعیت افزونه</h2>
+                <p style="font-size: 16px; color: green;">
+                    <strong>افزونه فعال است و در حال کار می‌باشد.</strong>
+                </p>
+                <p>این افزونه به صورت خودکار کار می‌کند و نیازی به تنظیمات خاصی ندارد.</p>
+            </div>
+
+            <div class="card">
+                <h2>📝 متغیرهای موجود</h2>
+                <p>شما می‌توانید از متغیرهای زیر در الگوی پیامک افزونه پیامکی خود استفاده کنید:</p>
+                <table class="widefat">
+                    <thead>
+                        <tr>
+                            <th>متغیر</th>
+                            <th>توضیحات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>{hotel_name}</code></td>
+                            <td>نام هتل</td>
+                        </tr>
+                        <tr>
+                            <td><code>{room_name}</code></td>
+                            <td>نام اتاق</td>
+                        </tr>
+                        <tr>
+                            <td><code>{checkin_date}</code></td>
+                            <td>تاریخ ورود</td>
+                        </tr>
+                        <tr>
+                            <td><code>{checkout_date}</code></td>
+                            <td>تاریخ خروج</td>
+                        </tr>
+                        <tr>
+                            <td><code>{nights}</code></td>
+                            <td>تعداد شب اقامت</td>
+                        </tr>
+                        <tr>
+                            <td><code>{booking_info}</code></td>
+                            <td>اطلاعات کامل رزرو (شامل همه موارد بالا)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>💡 نحوه استفاده</h2>
+                <ol>
+                    <li>به تنظیمات افزونه پیامکی خود بروید</li>
+                    <li>الگوی پیامک را ویرایش کنید</li>
+                    <li>یکی از متغیرهای بالا را در متن پیامک قرار دهید</li>
+                    <li>ذخیره کنید و سفارش تستی ثبت کنید</li>
+                </ol>
+
+                <h3>مثال:</h3>
+                <pre style="background: #f5f5f5; padding: 15px; direction: rtl;">مشتری گرامی
+
+رزرو شما تایید شد:
+
+{booking_info}
+
+شماره سفارش: {order_number}</pre>
+            </div>
+
+            <div class="card">
+                <h2>🔍 تست کارکرد</h2>
+                <p>برای تست کارکرد، یک سفارش آزمایشی ثبت کنید و پیامک ارسالی را بررسی کنید.</p>
+
+                <?php
+                // نمایش آخرین سفارش با اطلاعات رزرو
+                $args = array(
+                    'limit' => 5,
+                    'orderby' => 'date',
+                    'order' => 'DESC',
+                );
+                $orders = wc_get_orders($args);
+
+                if (!empty($orders)) {
+                    echo '<h3>آخرین سفارشات با اطلاعات رزرو:</h3>';
+                    echo '<table class="widefat">';
+                    echo '<thead><tr><th>شماره سفارش</th><th>نام اتاق</th><th>تاریخ ورود</th><th>تاریخ خروج</th></tr></thead>';
+                    echo '<tbody>';
+
+                    foreach ($orders as $order) {
+                        $booking_details = $order->get_meta('_jetbooking_details');
+                        if (!empty($booking_details) && !empty($booking_details['room_name'])) {
+                            echo '<tr>';
+                            echo '<td>#' . $order->get_id() . '</td>';
+                            echo '<td>' . esc_html($booking_details['room_name']) . '</td>';
+                            echo '<td>' . esc_html($booking_details['checkin_date']) . '</td>';
+                            echo '<td>' . esc_html($booking_details['checkout_date']) . '</td>';
+                            echo '</tr>';
+                        }
+                    }
+
+                    echo '</tbody></table>';
+                }
+                ?>
+            </div>
+
+            <div class="card" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+                <h2>⚠️ نکات مهم</h2>
+                <ul>
+                    <li>اگر متغیرها در پیامک نمایش داده نمی‌شوند، ممکن است افزونه پیامکی شما از فیلتر خاصی استفاده کند.</li>
+                    <li>در این صورت، نام دقیق افزونه پیامکی خود را به ما اطلاع دهید تا فیلتر مربوطه را اضافه کنیم.</li>
+                    <li>سفارش‌های قدیمی ممکن است اطلاعات رزرو را نداشته باشند. حتماً با سفارش جدید تست کنید.</li>
+                </ul>
+            </div>
+        </div>
+        <style>
+            .card {
+                background: white;
+                padding: 20px;
+                margin: 20px 0;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+            }
+            .card h2 { margin-top: 0; }
+            .card code {
+                background: #f5f5f5;
+                padding: 3px 8px;
+                border-radius: 3px;
+                font-family: monospace;
+                direction: ltr;
+                display: inline-block;
+            }
+            .widefat { margin: 15px 0; }
+        </style>
+        <?php
     }
 
     /**
@@ -119,6 +305,16 @@ class JetBooking_SMS_Integration {
     }
 
     /**
+     * ذخیره اطلاعات رزرو در سفارش جدید
+     */
+    public function save_booking_data_on_new_order($order_id) {
+        $order = wc_get_order($order_id);
+        if ($order) {
+            $this->save_booking_data_to_order($order, array());
+        }
+    }
+
+    /**
      * ذخیره اطلاعات رزرو در سفارش
      *
      * @param WC_Order $order سفارش
@@ -128,7 +324,7 @@ class JetBooking_SMS_Integration {
         // استخراج اطلاعات رزرو از آیتم‌های سفارش
         $booking_details = $this->extract_booking_details($order);
 
-        if (!empty($booking_details)) {
+        if (!empty($booking_details) && !empty($booking_details['room_name'])) {
             // ذخیره اطلاعات رزرو در متادیتای سفارش
             $order->update_meta_data('_jetbooking_details', $booking_details);
             $order->update_meta_data('_jetbooking_hotel_name', $booking_details['hotel_name']);
@@ -136,6 +332,13 @@ class JetBooking_SMS_Integration {
             $order->update_meta_data('_jetbooking_checkin_date', $booking_details['checkin_date']);
             $order->update_meta_data('_jetbooking_checkout_date', $booking_details['checkout_date']);
             $order->update_meta_data('_jetbooking_nights', $booking_details['nights']);
+            $order->save();
+
+            // لاگ برای دیباگ
+            if (JETBOOKING_SMS_DEBUG) {
+                error_log('JetBooking SMS: Booking details saved for order #' . $order->get_id());
+                error_log('Booking details: ' . print_r($booking_details, true));
+            }
         }
     }
 
@@ -185,12 +388,16 @@ class JetBooking_SMS_Integration {
                         case 'check_in_date':
                         case '_check_in_date':
                         case 'apartment_check_in':
+                        case 'Check in':
+                        case 'تاریخ ورود':
                             $booking_details['checkin_date'] = $this->format_date($value);
                             break;
 
                         case 'check_out_date':
                         case '_check_out_date':
                         case 'apartment_check_out':
+                        case 'Check out':
+                        case 'تاریخ خروج':
                             $booking_details['checkout_date'] = $this->format_date($value);
                             break;
                     }
@@ -273,7 +480,7 @@ class JetBooking_SMS_Integration {
         }
 
         // اگر تاریخ قبلاً فرمت شده است
-        if (is_string($date) && !is_numeric($date)) {
+        if (is_string($date) && !is_numeric($date) && strpos($date, '/') !== false) {
             return $date;
         }
 
@@ -284,6 +491,15 @@ class JetBooking_SMS_Integration {
                 return parsidate('Y/m/d', $date);
             }
             return date('Y/m/d', $date);
+        }
+
+        // تلاش برای تبدیل به timestamp
+        $timestamp = strtotime($date);
+        if ($timestamp !== false) {
+            if (function_exists('parsidate')) {
+                return parsidate('Y/m/d', $timestamp);
+            }
+            return date('Y/m/d', $timestamp);
         }
 
         return $date;
@@ -314,7 +530,7 @@ class JetBooking_SMS_Integration {
      * @param WC_Order|int $order سفارش یا شناسه سفارش
      * @return string متن پیامک با اطلاعات رزرو
      */
-    public function add_booking_details_to_sms($message, $order) {
+    public function add_booking_details_to_sms($message, $order = null) {
         // دریافت شیء سفارش
         if (is_numeric($order)) {
             $order = wc_get_order($order);
@@ -330,13 +546,55 @@ class JetBooking_SMS_Integration {
         // اگر اطلاعات رزرو موجود نیست، سعی کن آن را استخراج کن
         if (empty($booking_details)) {
             $booking_details = $this->extract_booking_details($order);
-            if (!empty($booking_details)) {
+            if (!empty($booking_details) && !empty($booking_details['room_name'])) {
                 $order->update_meta_data('_jetbooking_details', $booking_details);
                 $order->save();
             }
         }
 
         // اگر هنوز اطلاعات رزرو موجود نیست، پیامک را بدون تغییر برگردان
+        if (empty($booking_details) || empty($booking_details['room_name'])) {
+            return $message;
+        }
+
+        // لاگ برای دیباگ
+        if (JETBOOKING_SMS_DEBUG) {
+            error_log('JetBooking SMS: Processing SMS for order #' . $order->get_id());
+            error_log('Original message: ' . $message);
+        }
+
+        // جایگزینی متغیرها در پیامک
+        $message = $this->replace_booking_variables($message, $order);
+
+        if (JETBOOKING_SMS_DEBUG) {
+            error_log('Modified message: ' . $message);
+        }
+
+        return $message;
+    }
+
+    /**
+     * جایگزینی متغیرهای رزرو در متن
+     */
+    public function replace_booking_variables($message, $order = null) {
+        if (!$order) {
+            return $message;
+        }
+
+        if (is_numeric($order)) {
+            $order = wc_get_order($order);
+        }
+
+        if (!$order || !is_a($order, 'WC_Order')) {
+            return $message;
+        }
+
+        $booking_details = $order->get_meta('_jetbooking_details');
+
+        if (empty($booking_details)) {
+            $booking_details = $this->extract_booking_details($order);
+        }
+
         if (empty($booking_details) || empty($booking_details['room_name'])) {
             return $message;
         }
@@ -357,8 +615,9 @@ class JetBooking_SMS_Integration {
             $message = $booking_info;
         }
 
-        // اگر پیامک اطلاعات رزرو را ندارد، آن را اضافه کن
-        if (strpos($message, $booking_details['room_name']) === false) {
+        // اگر پیامک اطلاعات رزرو را ندارد و متغیری هم استفاده نشده، آن را اضافه کن
+        if (strpos($message, $booking_details['room_name']) === false &&
+            strpos($message, '{') === false) {
             $message .= "\n\n" . $booking_info;
         }
 
@@ -404,8 +663,8 @@ class JetBooking_SMS_Integration {
      * @param WC_Order $order سفارش
      * @return array
      */
-    public function add_custom_sms_variables($replace, $order) {
-        if (!is_a($order, 'WC_Order')) {
+    public function add_custom_sms_variables($replace, $order = null) {
+        if (!$order || !is_a($order, 'WC_Order')) {
             return $replace;
         }
 
@@ -415,7 +674,7 @@ class JetBooking_SMS_Integration {
             $booking_details = $this->extract_booking_details($order);
         }
 
-        if (!empty($booking_details)) {
+        if (!empty($booking_details) && !empty($booking_details['room_name'])) {
             $replace['{hotel_name}'] = $booking_details['hotel_name'] ?? '';
             $replace['{room_name}'] = $booking_details['room_name'] ?? '';
             $replace['{checkin_date}'] = $booking_details['checkin_date'] ?? '';
@@ -425,6 +684,22 @@ class JetBooking_SMS_Integration {
         }
 
         return $replace;
+    }
+
+    /**
+     * اضافه کردن اطلاعات رزرو به پیامک در زمان تغییر وضعیت
+     */
+    public function maybe_add_booking_to_sms($order_id, $old_status, $new_status) {
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return;
+        }
+
+        // اطمینان از ذخیره اطلاعات رزرو
+        $booking_details = $order->get_meta('_jetbooking_details');
+        if (empty($booking_details)) {
+            $this->save_booking_data_to_order($order, array());
+        }
     }
 }
 
