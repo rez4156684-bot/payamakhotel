@@ -3,7 +3,7 @@
  * Plugin Name: JetBooking SMS Integration
  * Plugin URI: https://github.com/rez4156684-bot/payamakhotel
  * Description: یکپارچه‌سازی اطلاعات رزرو JetBooking با پیامک‌های ووکامرس - افزودن اطلاعات هتل، اتاق و تاریخ‌های ورود و خروج به پیامک‌ها
- * Version: 1.5.0
+ * Version: 1.5.1
  * Author: PayamakHotel Team
  * Author URI: https://github.com/rez4156684-bot
  * Text Domain: jetbooking-sms-integration
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 }
 
 // تعریف ثابت‌های افزونه
-define('JETBOOKING_SMS_VERSION', '1.5.0');
+define('JETBOOKING_SMS_VERSION', '1.5.1');
 define('JETBOOKING_SMS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JETBOOKING_SMS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('JETBOOKING_SMS_DEBUG', false); // برای دیباگ، این را true کنید
@@ -1235,8 +1235,18 @@ define(\'WP_DEBUG_DISPLAY\', false);</pre>';
 
         $booking_details = $order->get_meta('_jetbooking_details');
 
-        if (empty($booking_details)) {
+        // اگر اطلاعات خالی است یا تاریخ‌ها خالی هستند، دوباره استخراج کن
+        if (empty($booking_details) || empty($booking_details['checkin_date']) || empty($booking_details['checkout_date'])) {
             $booking_details = $this->extract_booking_details($order);
+
+            // ذخیره اطلاعات جدید
+            if (!empty($booking_details) && !empty($booking_details['room_name'])) {
+                $order->update_meta_data('_jetbooking_details', $booking_details);
+                $order->update_meta_data('_jetbooking_checkin_date', $booking_details['checkin_date']);
+                $order->update_meta_data('_jetbooking_checkout_date', $booking_details['checkout_date']);
+                $order->update_meta_data('_jetbooking_nights', $booking_details['nights']);
+                $order->save();
+            }
         }
 
         if (empty($booking_details) || empty($booking_details['room_name'])) {
