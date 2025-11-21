@@ -3,7 +3,7 @@
  * Plugin Name: JetBooking SMS Integration
  * Plugin URI: https://github.com/rez4156684-bot/payamakhotel
  * Description: یکپارچه‌سازی اطلاعات رزرو JetBooking با پیامک‌های ووکامرس - افزودن اطلاعات هتل، اتاق و تاریخ‌های ورود و خروج به پیامک‌ها
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: PayamakHotel Team
  * Author URI: https://github.com/rez4156684-bot
  * Text Domain: jetbooking-sms-integration
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 }
 
 // تعریف ثابت‌های افزونه
-define('JETBOOKING_SMS_VERSION', '1.1.0');
+define('JETBOOKING_SMS_VERSION', '1.2.0');
 define('JETBOOKING_SMS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JETBOOKING_SMS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('JETBOOKING_SMS_DEBUG', false); // برای دیباگ، این را true کنید
@@ -365,46 +365,62 @@ class JetBooking_SMS_Integration {
         foreach ($items as $item_id => $item) {
             $product_id = $item->get_product_id();
 
-            // بررسی اینکه آیا این محصول یک رزرو JetBooking است
+            // بررسی اینکه آیا این محصول یک رزرو JetBooking/JetEngine است
             $is_booking = get_post_meta($product_id, '_apartment_booking', true);
 
             if ($is_booking === 'yes' || $this->is_jetbooking_product($product_id)) {
                 // استخراج اطلاعات از متادیتای آیتم
                 $item_meta = $item->get_meta_data();
 
+                if (JETBOOKING_SMS_DEBUG) {
+                    error_log('=== Item Meta Data for Order #' . $order->get_id() . ' ===');
+                }
+
                 foreach ($item_meta as $meta) {
                     $meta_data = $meta->get_data();
                     $key = $meta_data['key'];
                     $value = $meta_data['value'];
 
+                    if (JETBOOKING_SMS_DEBUG) {
+                        error_log('Key: ' . $key . ' = ' . print_r($value, true));
+                    }
+
                     // استخراج اطلاعات بر اساس کلیدهای مختلف
-                    switch ($key) {
-                        case 'apartment_unit':
-                        case '_apartment_unit':
-                        case 'jet_abaf_unit':
+                    // JetBooking / JetEngine Keys
+                    $key_lower = strtolower($key);
+
+                    // شناسایی نام هتل/واحد
+                    if (in_array($key, array('apartment_unit', '_apartment_unit', 'jet_abaf_unit', '_jet_unit_id', 'jet_unit')) ||
+                        strpos($key_lower, 'unit') !== false ||
+                        strpos($key_lower, 'apartment') !== false) {
+                        if (is_numeric($value)) {
                             $booking_details['hotel_name'] = $this->get_apartment_name($value);
-                            break;
+                        } else {
+                            $booking_details['hotel_name'] = $value;
+                        }
+                    }
 
-                        case 'check_in_date':
-                        case '_check_in_date':
-                        case 'apartment_check_in':
-                        case 'Check in':
-                        case 'تاریخ ورود':
-                            $booking_details['checkin_date'] = $this->format_date($value);
-                            break;
+                    // شناسایی تاریخ ورود
+                    if (in_array($key, array('check_in_date', '_check_in_date', 'apartment_check_in', 'Check in', 'تاریخ ورود', 'checkin', '_checkin', 'check-in', '_check-in')) ||
+                        strpos($key_lower, 'check') !== false && strpos($key_lower, 'in') !== false ||
+                        strpos($key_lower, 'ورود') !== false ||
+                        strpos($key_lower, 'start') !== false && strpos($key_lower, 'date') !== false) {
+                        $booking_details['checkin_date'] = $this->format_date($value);
+                    }
 
-                        case 'check_out_date':
-                        case '_check_out_date':
-                        case 'apartment_check_out':
-                        case 'Check out':
-                        case 'تاریخ خروج':
-                            $booking_details['checkout_date'] = $this->format_date($value);
-                            break;
+                    // شناسایی تاریخ خروج
+                    if (in_array($key, array('check_out_date', '_check_out_date', 'apartment_check_out', 'Check out', 'تاریخ خروج', 'checkout', '_checkout', 'check-out', '_check-out')) ||
+                        strpos($key_lower, 'check') !== false && strpos($key_lower, 'out') !== false ||
+                        strpos($key_lower, 'خروج') !== false ||
+                        strpos($key_lower, 'end') !== false && strpos($key_lower, 'date') !== false) {
+                        $booking_details['checkout_date'] = $this->format_date($value);
                     }
                 }
 
                 // نام اتاق از نام محصول
-                $booking_details['room_name'] = $item->get_name();
+                if (empty($booking_details['room_name'])) {
+                    $booking_details['room_name'] = $item->get_name();
+                }
 
                 // محاسبه تعداد شب‌ها
                 if (!empty($booking_details['checkin_date']) && !empty($booking_details['checkout_date'])) {
@@ -413,6 +429,19 @@ class JetBooking_SMS_Integration {
                         $booking_details['checkout_date']
                     );
                 }
+
+                // اگر اطلاعات پیدا شد، از حلقه خارج شو
+                if (!empty($booking_details['room_name'])) {
+                    break;
+                }
+            }
+        }
+
+        // اگر اطلاعاتی پیدا نشد، از تمام آیتم‌ها اطلاعات بگیر
+        if (empty($booking_details['room_name'])) {
+            foreach ($items as $item_id => $item) {
+                $booking_details['room_name'] = $item->get_name();
+                break; // فقط اولین آیتم
             }
         }
 
@@ -421,26 +450,44 @@ class JetBooking_SMS_Integration {
             $booking_details['hotel_name'] = get_bloginfo('name');
         }
 
+        if (JETBOOKING_SMS_DEBUG) {
+            error_log('=== Final Booking Details ===');
+            error_log(print_r($booking_details, true));
+        }
+
         return $booking_details;
     }
 
     /**
-     * بررسی اینکه آیا محصول یک محصول JetBooking است
+     * بررسی اینکه آیا محصول یک محصول JetBooking/JetEngine است
      *
      * @param int $product_id شناسه محصول
      * @return bool
      */
     private function is_jetbooking_product($product_id) {
-        // روش‌های مختلف شناسایی محصولات JetBooking
+        // روش‌های مختلف شناسایی محصولات JetBooking/JetEngine
         $meta_keys = array(
             '_apartment_booking',
             'jet_abaf_apartment_booking',
             '_jet_booking_item',
+            '_jet_engine_booking',
+            '_is_booking',
         );
 
         foreach ($meta_keys as $meta_key) {
             $value = get_post_meta($product_id, $meta_key, true);
-            if ($value === 'yes' || $value === '1' || $value === 1) {
+            if ($value === 'yes' || $value === '1' || $value === 1 || $value === true) {
+                return true;
+            }
+        }
+
+        // بررسی تمام متاها برای کلمات کلیدی مرتبط با booking
+        $all_meta = get_post_meta($product_id);
+        foreach ($all_meta as $key => $value) {
+            $key_lower = strtolower($key);
+            if (strpos($key_lower, 'booking') !== false ||
+                strpos($key_lower, 'apartment') !== false ||
+                strpos($key_lower, 'jet_') === 0) {
                 return true;
             }
         }
