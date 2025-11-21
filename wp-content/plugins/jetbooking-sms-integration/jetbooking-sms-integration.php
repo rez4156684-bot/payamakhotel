@@ -3,7 +3,7 @@
  * Plugin Name: JetBooking SMS Integration
  * Plugin URI: https://github.com/rez4156684-bot/payamakhotel
  * Description: یکپارچه‌سازی اطلاعات رزرو JetBooking با پیامک‌های ووکامرس - افزودن اطلاعات هتل، اتاق و تاریخ‌های ورود و خروج به پیامک‌ها
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: PayamakHotel Team
  * Author URI: https://github.com/rez4156684-bot
  * Text Domain: jetbooking-sms-integration
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 }
 
 // تعریف ثابت‌های افزونه
-define('JETBOOKING_SMS_VERSION', '1.3.0');
+define('JETBOOKING_SMS_VERSION', '1.4.0');
 define('JETBOOKING_SMS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JETBOOKING_SMS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('JETBOOKING_SMS_DEBUG', false); // برای دیباگ، این را true کنید
@@ -137,124 +137,49 @@ class JetBooking_SMS_Integration {
     }
 
     /**
-     * صفحه مدیریت
+     * صفحه مدیریت پیشرفته با تب‌های مختلف
      */
     public function admin_page() {
+        $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
         ?>
         <div class="wrap">
-            <h1>افزونه یکپارچه‌سازی JetBooking با SMS</h1>
+            <h1>🔧 افزونه یکپارچه‌سازی JetBooking با SMS - نسخه <?php echo JETBOOKING_SMS_VERSION; ?></h1>
 
-            <div class="card">
-                <h2>✅ وضعیت افزونه</h2>
-                <p style="font-size: 16px; color: green;">
-                    <strong>افزونه فعال است و در حال کار می‌باشد.</strong>
-                </p>
-                <p>این افزونه به صورت خودکار کار می‌کند و نیازی به تنظیمات خاصی ندارد.</p>
-            </div>
+            <h2 class="nav-tab-wrapper">
+                <a href="?page=jetbooking-sms-integration&tab=dashboard" class="nav-tab <?php echo $active_tab == 'dashboard' ? 'nav-tab-active' : ''; ?>">📊 داشبورد</a>
+                <a href="?page=jetbooking-sms-integration&tab=orders" class="nav-tab <?php echo $active_tab == 'orders' ? 'nav-tab-active' : ''; ?>">📦 سفارشات</a>
+                <a href="?page=jetbooking-sms-integration&tab=filters" class="nav-tab <?php echo $active_tab == 'filters' ? 'nav-tab-active' : ''; ?>">🔌 فیلترها</a>
+                <a href="?page=jetbooking-sms-integration&tab=test" class="nav-tab <?php echo $active_tab == 'test' ? 'nav-tab-active' : ''; ?>">🧪 تست</a>
+                <a href="?page=jetbooking-sms-integration&tab=logs" class="nav-tab <?php echo $active_tab == 'logs' ? 'nav-tab-active' : ''; ?>">📄 لاگ‌ها</a>
+                <a href="?page=jetbooking-sms-integration&tab=guide" class="nav-tab <?php echo $active_tab == 'guide' ? 'nav-tab-active' : ''; ?>">📖 راهنما</a>
+            </h2>
 
-            <div class="card">
-                <h2>📝 متغیرهای موجود</h2>
-                <p>شما می‌توانید از متغیرهای زیر در الگوی پیامک افزونه پیامکی خود استفاده کنید:</p>
-                <table class="widefat">
-                    <thead>
-                        <tr>
-                            <th>متغیر</th>
-                            <th>توضیحات</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><code>{hotel_name}</code></td>
-                            <td>نام هتل</td>
-                        </tr>
-                        <tr>
-                            <td><code>{room_name}</code></td>
-                            <td>نام اتاق</td>
-                        </tr>
-                        <tr>
-                            <td><code>{checkin_date}</code></td>
-                            <td>تاریخ ورود</td>
-                        </tr>
-                        <tr>
-                            <td><code>{checkout_date}</code></td>
-                            <td>تاریخ خروج</td>
-                        </tr>
-                        <tr>
-                            <td><code>{nights}</code></td>
-                            <td>تعداد شب اقامت</td>
-                        </tr>
-                        <tr>
-                            <td><code>{booking_info}</code></td>
-                            <td>اطلاعات کامل رزرو (شامل همه موارد بالا)</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="card">
-                <h2>💡 نحوه استفاده</h2>
-                <ol>
-                    <li>به تنظیمات افزونه پیامکی خود بروید</li>
-                    <li>الگوی پیامک را ویرایش کنید</li>
-                    <li>یکی از متغیرهای بالا را در متن پیامک قرار دهید</li>
-                    <li>ذخیره کنید و سفارش تستی ثبت کنید</li>
-                </ol>
-
-                <h3>مثال:</h3>
-                <pre style="background: #f5f5f5; padding: 15px; direction: rtl;">مشتری گرامی
-
-رزرو شما تایید شد:
-
-{booking_info}
-
-شماره سفارش: {order_number}</pre>
-            </div>
-
-            <div class="card">
-                <h2>🔍 تست کارکرد</h2>
-                <p>برای تست کارکرد، یک سفارش آزمایشی ثبت کنید و پیامک ارسالی را بررسی کنید.</p>
-
+            <div class="tab-content">
                 <?php
-                // نمایش آخرین سفارش با اطلاعات رزرو
-                $args = array(
-                    'limit' => 5,
-                    'orderby' => 'date',
-                    'order' => 'DESC',
-                );
-                $orders = wc_get_orders($args);
-
-                if (!empty($orders)) {
-                    echo '<h3>آخرین سفارشات با اطلاعات رزرو:</h3>';
-                    echo '<table class="widefat">';
-                    echo '<thead><tr><th>شماره سفارش</th><th>نام اتاق</th><th>تاریخ ورود</th><th>تاریخ خروج</th></tr></thead>';
-                    echo '<tbody>';
-
-                    foreach ($orders as $order) {
-                        $booking_details = $order->get_meta('_jetbooking_details');
-                        if (!empty($booking_details) && !empty($booking_details['room_name'])) {
-                            echo '<tr>';
-                            echo '<td>#' . $order->get_id() . '</td>';
-                            echo '<td>' . esc_html($booking_details['room_name']) . '</td>';
-                            echo '<td>' . esc_html($booking_details['checkin_date']) . '</td>';
-                            echo '<td>' . esc_html($booking_details['checkout_date']) . '</td>';
-                            echo '</tr>';
-                        }
-                    }
-
-                    echo '</tbody></table>';
+                switch ($active_tab) {
+                    case 'dashboard':
+                        $this->render_dashboard_tab();
+                        break;
+                    case 'orders':
+                        $this->render_orders_tab();
+                        break;
+                    case 'filters':
+                        $this->render_filters_tab();
+                        break;
+                    case 'test':
+                        $this->render_test_tab();
+                        break;
+                    case 'logs':
+                        $this->render_logs_tab();
+                        break;
+                    case 'guide':
+                        $this->render_guide_tab();
+                        break;
                 }
                 ?>
             </div>
-
-            <div class="card" style="background: #fff3cd; border-left: 4px solid #ffc107;">
-                <h2>⚠️ نکات مهم</h2>
-                <ul>
-                    <li>اگر متغیرها در پیامک نمایش داده نمی‌شوند، ممکن است افزونه پیامکی شما از فیلتر خاصی استفاده کند.</li>
-                    <li>در این صورت، نام دقیق افزونه پیامکی خود را به ما اطلاع دهید تا فیلتر مربوطه را اضافه کنیم.</li>
-                    <li>سفارش‌های قدیمی ممکن است اطلاعات رزرو را نداشته باشند. حتماً با سفارش جدید تست کنید.</li>
-                </ul>
-            </div>
         </div>
+
         <style>
             .card {
                 background: white;
@@ -262,8 +187,13 @@ class JetBooking_SMS_Integration {
                 margin: 20px 0;
                 border: 1px solid #ccc;
                 border-radius: 5px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
-            .card h2 { margin-top: 0; }
+            .card h2 {
+                margin-top: 0;
+                border-bottom: 2px solid #0073aa;
+                padding-bottom: 10px;
+            }
             .card code {
                 background: #f5f5f5;
                 padding: 3px 8px;
@@ -273,7 +203,572 @@ class JetBooking_SMS_Integration {
                 display: inline-block;
             }
             .widefat { margin: 15px 0; }
+            .status-box {
+                display: inline-block;
+                padding: 5px 10px;
+                border-radius: 3px;
+                margin: 5px;
+                font-weight: bold;
+            }
+            .status-active { background: #d4edda; color: #155724; }
+            .status-inactive { background: #f8d7da; color: #721c24; }
+            .status-warning { background: #fff3cd; color: #856404; }
+            .debug-output {
+                background: #f8f9fa;
+                border: 1px solid #dee2e6;
+                padding: 15px;
+                border-radius: 4px;
+                font-family: monospace;
+                direction: ltr;
+                white-space: pre-wrap;
+                max-height: 500px;
+                overflow-y: auto;
+            }
+            .btn-primary {
+                background: #0073aa;
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 3px;
+                cursor: pointer;
+                text-decoration: none;
+                display: inline-block;
+            }
+            .btn-primary:hover {
+                background: #005a87;
+                color: white;
+            }
+            .alert {
+                padding: 15px;
+                margin: 15px 0;
+                border-radius: 4px;
+            }
+            .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+            .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+            .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+            .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+            .copy-btn {
+                background: #28a745;
+                color: white;
+                padding: 5px 10px;
+                border: none;
+                border-radius: 3px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+            .copy-btn:hover {
+                background: #218838;
+            }
         </style>
+
+        <script>
+        function copyToClipboard(elementId) {
+            var element = document.getElementById(elementId);
+            var text = element.textContent || element.innerText;
+
+            navigator.clipboard.writeText(text).then(function() {
+                alert('کپی شد!');
+            }, function() {
+                // Fallback
+                var textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('کپی شد!');
+            });
+        }
+        </script>
+        <?php
+    }
+
+    /**
+     * تب داشبورد
+     */
+    private function render_dashboard_tab() {
+        ?>
+        <div class="card">
+            <h2>✅ وضعیت سیستم</h2>
+            <?php
+            // بررسی افزونه‌های مورد نیاز
+            $woocommerce_active = class_exists('WooCommerce');
+            $jetbooking_active = defined('JET_ABAF_VERSION') || class_exists('Jet_Booking');
+            $debug_mode = JETBOOKING_SMS_DEBUG;
+
+            echo '<p><span class="status-box ' . ($woocommerce_active ? 'status-active' : 'status-inactive') . '">ووکامرس: ' . ($woocommerce_active ? 'فعال ✓' : 'غیرفعال ✗') . '</span></p>';
+            echo '<p><span class="status-box ' . ($jetbooking_active ? 'status-active' : 'status-inactive') . '">JetBooking/JetABAF: ' . ($jetbooking_active ? 'فعال ✓' : 'غیرفعال ✗') . '</span></p>';
+            echo '<p><span class="status-box ' . ($debug_mode ? 'status-warning' : 'status-active') . '">حالت Debug: ' . ($debug_mode ? 'فعال' : 'غیرفعال') . '</span></p>';
+            ?>
+        </div>
+
+        <div class="card">
+            <h2>📊 آمار کلی</h2>
+            <?php
+            $args = array(
+                'limit' => -1,
+                'meta_key' => '_jetbooking_details',
+                'meta_compare' => 'EXISTS',
+            );
+            $orders_with_booking = count(wc_get_orders($args));
+
+            $total_orders = count(wc_get_orders(array('limit' => -1)));
+            ?>
+            <p>تعداد کل سفارشات: <strong><?php echo $total_orders; ?></strong></p>
+            <p>سفارشات با اطلاعات رزرو: <strong><?php echo $orders_with_booking; ?></strong></p>
+        </div>
+
+        <div class="card">
+            <h2>📝 متغیرهای موجود</h2>
+            <table class="widefat">
+                <thead>
+                    <tr>
+                        <th>متغیر</th>
+                        <th>توضیحات</th>
+                        <th>مثال</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>{hotel_name}</code></td>
+                        <td>نام هتل</td>
+                        <td>هتل قشم</td>
+                    </tr>
+                    <tr>
+                        <td><code>{room_name}</code></td>
+                        <td>نام اتاق</td>
+                        <td>سوئیت دو تخته</td>
+                    </tr>
+                    <tr>
+                        <td><code>{checkin_date}</code></td>
+                        <td>تاریخ ورود</td>
+                        <td>1403/09/01</td>
+                    </tr>
+                    <tr>
+                        <td><code>{checkout_date}</code></td>
+                        <td>تاریخ خروج</td>
+                        <td>1403/09/05</td>
+                    </tr>
+                    <tr>
+                        <td><code>{nights}</code></td>
+                        <td>تعداد شب</td>
+                        <td>4</td>
+                    </tr>
+                    <tr>
+                        <td><code>{booking_info}</code></td>
+                        <td>اطلاعات کامل رزرو</td>
+                        <td>همه موارد بالا</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>🚀 شروع سریع</h2>
+            <ol>
+                <li>مطمئن شوید JetBooking فعال است</li>
+                <li>یک سفارش تستی ثبت کنید</li>
+                <li>به تب <a href="?page=jetbooking-sms-integration&tab=orders">سفارشات</a> بروید و اطلاعات را ببینید</li>
+                <li>در تنظیمات افزونه پیامکی، از متغیرهای بالا استفاده کنید</li>
+            </ol>
+        </div>
+        <?php
+    }
+
+    /**
+     * تب سفارشات
+     */
+    private function render_orders_tab() {
+        ?>
+        <div class="card">
+            <h2>📦 آخرین سفارشات با اطلاعات رزرو</h2>
+            <?php
+            $args = array(
+                'limit' => 10,
+                'orderby' => 'date',
+                'order' => 'DESC',
+            );
+            $orders = wc_get_orders($args);
+
+            if (!empty($orders)) {
+                echo '<table class="widefat striped">';
+                echo '<thead><tr>';
+                echo '<th>ID سفارش</th>';
+                echo '<th>مشتری</th>';
+                echo '<th>نام اتاق</th>';
+                echo '<th>نام هتل</th>';
+                echo '<th>ورود</th>';
+                echo '<th>خروج</th>';
+                echo '<th>شب</th>';
+                echo '<th>عملیات</th>';
+                echo '</tr></thead><tbody>';
+
+                foreach ($orders as $order) {
+                    $booking_details = $order->get_meta('_jetbooking_details');
+
+                    // اگر اطلاعات رزرو نداشت، سعی کن استخراج کن
+                    if (empty($booking_details)) {
+                        $booking_details = $this->extract_booking_details($order);
+                    }
+
+                    echo '<tr>';
+                    echo '<td><a href="' . admin_url('post.php?post=' . $order->get_id() . '&action=edit') . '" target="_blank">#' . $order->get_id() . '</a></td>';
+                    echo '<td>' . esc_html($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()) . '</td>';
+
+                    if (!empty($booking_details) && !empty($booking_details['room_name'])) {
+                        echo '<td>' . esc_html($booking_details['room_name']) . '</td>';
+                        echo '<td>' . esc_html($booking_details['hotel_name']) . '</td>';
+                        echo '<td>' . esc_html($booking_details['checkin_date']) . '</td>';
+                        echo '<td>' . esc_html($booking_details['checkout_date']) . '</td>';
+                        echo '<td>' . esc_html($booking_details['nights']) . '</td>';
+                    } else {
+                        echo '<td colspan="5" style="color: #dc3545;">⚠️ اطلاعات رزرو یافت نشد</td>';
+                    }
+
+                    echo '<td><a href="?page=jetbooking-sms-integration&tab=test&order_id=' . $order->get_id() . '" class="button">مشاهده جزئیات</a></td>';
+                    echo '</tr>';
+                }
+
+                echo '</tbody></table>';
+            } else {
+                echo '<div class="alert alert-info">هیچ سفارشی یافت نشد.</div>';
+            }
+            ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * تب فیلترها
+     */
+    private function render_filters_tab() {
+        global $wp_filter;
+        ?>
+        <div class="card">
+            <h2>🔌 فیلترهای فعال مرتبط با SMS</h2>
+            <p>این لیست فیلترهایی که افزونه ما به آن‌ها متصل شده است:</p>
+
+            <?php
+            $our_filters = array(
+                'woocommerce_sms_message',
+                'digits_wc_sms_message',
+                'persianwoosms_sms_body',
+                'ywsn_sms_message_content',
+                'woocommerce_order_sms_message',
+                'kavenegar_sms_message',
+                'smsir_wc_message',
+                'twilio_sms_message',
+                'wp_sms_message',
+                'wp_sms_msg',
+                'pwsms_sms_body',
+                'pwsms_message',
+                'webservice_sms_message',
+                'woocommerce_email_format_string_replace',
+                'woocommerce_email_format_string',
+            );
+
+            echo '<table class="widefat striped">';
+            echo '<thead><tr><th>نام فیلتر</th><th>وضعیت</th><th>تعداد Hooks</th></tr></thead>';
+            echo '<tbody>';
+
+            foreach ($our_filters as $filter_name) {
+                $exists = isset($wp_filter[$filter_name]);
+                $count = $exists ? count($wp_filter[$filter_name]->callbacks) : 0;
+
+                echo '<tr>';
+                echo '<td><code>' . esc_html($filter_name) . '</code></td>';
+                echo '<td><span class="status-box ' . ($exists ? 'status-active' : 'status-inactive') . '">' . ($exists ? 'فعال ✓' : 'غیرفعال ✗') . '</span></td>';
+                echo '<td>' . $count . '</td>';
+                echo '</tr>';
+            }
+
+            echo '</tbody></table>';
+            ?>
+
+            <h3 style="margin-top: 30px;">🔍 تمام فیلترهای SMS در سیستم</h3>
+            <?php
+            $sms_filters = array();
+            foreach ($wp_filter as $filter_name => $filter) {
+                if (stripos($filter_name, 'sms') !== false ||
+                    stripos($filter_name, 'message') !== false ||
+                    stripos($filter_name, 'pwsms') !== false) {
+                    $sms_filters[] = $filter_name;
+                }
+            }
+
+            if (!empty($sms_filters)) {
+                echo '<div class="debug-output" id="all-sms-filters">';
+                echo "یافت شد: " . count($sms_filters) . " فیلتر\n\n";
+                foreach ($sms_filters as $filter) {
+                    echo "- " . $filter . "\n";
+                }
+                echo '</div>';
+                echo '<button class="copy-btn" onclick="copyToClipboard(\'all-sms-filters\')">📋 کپی لیست</button>';
+            } else {
+                echo '<div class="alert alert-warning">هیچ فیلتر SMS فعالی یافت نشد!</div>';
+            }
+            ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * تب تست
+     */
+    private function render_test_tab() {
+        $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
+
+        if ($order_id > 0) {
+            $order = wc_get_order($order_id);
+            if ($order) {
+                ?>
+                <div class="card">
+                    <h2>🧪 جزئیات کامل سفارش #<?php echo $order_id; ?></h2>
+
+                    <h3>📦 اطلاعات سفارش</h3>
+                    <p><strong>مشتری:</strong> <?php echo $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(); ?></p>
+                    <p><strong>تلفن:</strong> <?php echo $order->get_billing_phone(); ?></p>
+                    <p><strong>وضعیت:</strong> <?php echo wc_get_order_status_name($order->get_status()); ?></p>
+                    <p><strong>مبلغ:</strong> <?php echo $order->get_formatted_order_total(); ?></p>
+
+                    <h3>🔍 متادیتای سفارش</h3>
+                    <?php
+                    $order_meta = $order->get_meta_data();
+                    echo '<div class="debug-output" id="order-meta">';
+                    echo "تعداد کل: " . count($order_meta) . "\n\n";
+                    foreach ($order_meta as $meta) {
+                        $data = $meta->get_data();
+                        echo "Key: " . $data['key'] . "\n";
+                        echo "Value: ";
+                        if (is_array($data['value']) || is_object($data['value'])) {
+                            echo print_r($data['value'], true);
+                        } else {
+                            echo $data['value'];
+                        }
+                        echo "\n\n";
+                    }
+                    echo '</div>';
+                    echo '<button class="copy-btn" onclick="copyToClipboard(\'order-meta\')">📋 کپی متادیتا</button>';
+                    ?>
+
+                    <h3>📦 آیتم‌های سفارش</h3>
+                    <?php
+                    $items = $order->get_items();
+                    foreach ($items as $item_id => $item) {
+                        echo '<h4>محصول: ' . $item->get_name() . ' (ID: ' . $item->get_product_id() . ')</h4>';
+
+                        $item_meta = $item->get_meta_data();
+                        echo '<div class="debug-output" id="item-meta-' . $item_id . '">';
+                        echo "تعداد متادیتا: " . count($item_meta) . "\n\n";
+                        foreach ($item_meta as $meta) {
+                            $data = $meta->get_data();
+                            echo "Key: " . $data['key'] . "\n";
+                            echo "Value: ";
+                            if (is_array($data['value']) || is_object($data['value'])) {
+                                echo print_r($data['value'], true);
+                            } else {
+                                echo $data['value'];
+                            }
+                            echo "\n\n";
+                        }
+                        echo '</div>';
+                        echo '<button class="copy-btn" onclick="copyToClipboard(\'item-meta-' . $item_id . '\')">📋 کپی</button><br><br>';
+                    }
+                    ?>
+
+                    <h3>✅ اطلاعات رزرو استخراج شده</h3>
+                    <?php
+                    $booking_details = $this->extract_booking_details($order);
+                    echo '<div class="debug-output" id="booking-details">';
+                    print_r($booking_details);
+                    echo '</div>';
+                    echo '<button class="copy-btn" onclick="copyToClipboard(\'booking-details\')">📋 کپی اطلاعات رزرو</button>';
+                    ?>
+
+                    <h3>📱 تست متن پیامک</h3>
+                    <?php
+                    $test_message = "مشتری گرامی\n\n{booking_info}\n\nسفارش: {order_number}";
+                    $processed_message = $this->replace_booking_variables($test_message, $order);
+
+                    echo '<p><strong>متن اولیه:</strong></p>';
+                    echo '<div class="debug-output">' . esc_html($test_message) . '</div>';
+
+                    echo '<p><strong>متن پردازش شده:</strong></p>';
+                    echo '<div class="debug-output" id="processed-message">' . esc_html($processed_message) . '</div>';
+                    echo '<button class="copy-btn" onclick="copyToClipboard(\'processed-message\')">📋 کپی پیامک</button>';
+                    ?>
+
+                    <p><a href="?page=jetbooking-sms-integration&tab=orders" class="btn-primary">← بازگشت به لیست سفارشات</a></p>
+                </div>
+                <?php
+                return;
+            }
+        }
+        ?>
+        <div class="card">
+            <h2>🧪 انتخاب سفارش برای تست</h2>
+            <p>برای مشاهده جزئیات کامل یک سفارش و تست استخراج اطلاعات، سفارشی را از لیست زیر انتخاب کنید:</p>
+
+            <?php
+            $args = array(
+                'limit' => 20,
+                'orderby' => 'date',
+                'order' => 'DESC',
+            );
+            $orders = wc_get_orders($args);
+
+            if (!empty($orders)) {
+                echo '<table class="widefat striped">';
+                echo '<thead><tr><th>ID</th><th>مشتری</th><th>تاریخ</th><th>وضعیت</th><th>عملیات</th></tr></thead>';
+                echo '<tbody>';
+
+                foreach ($orders as $order) {
+                    echo '<tr>';
+                    echo '<td>#' . $order->get_id() . '</td>';
+                    echo '<td>' . esc_html($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()) . '</td>';
+                    echo '<td>' . $order->get_date_created()->date('Y/m/d H:i') . '</td>';
+                    echo '<td>' . wc_get_order_status_name($order->get_status()) . '</td>';
+                    echo '<td><a href="?page=jetbooking-sms-integration&tab=test&order_id=' . $order->get_id() . '" class="button button-primary">🔍 تست و بررسی</a></td>';
+                    echo '</tr>';
+                }
+
+                echo '</tbody></table>';
+            }
+            ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * تب لاگ‌ها
+     */
+    private function render_logs_tab() {
+        ?>
+        <div class="card">
+            <h2>📄 فایل لاگ Debug</h2>
+
+            <?php
+            $log_file = WP_CONTENT_DIR . '/debug.log';
+
+            if (file_exists($log_file)) {
+                $log_content = file_get_contents($log_file);
+
+                // فیلتر کردن فقط لاگ‌های مربوط به JetBooking
+                $lines = explode("\n", $log_content);
+                $filtered_lines = array();
+
+                foreach ($lines as $line) {
+                    if (stripos($line, 'jetbooking') !== false ||
+                        stripos($line, 'booking') !== false ||
+                        stripos($line, 'jetabaf') !== false) {
+                        $filtered_lines[] = $line;
+                    }
+                }
+
+                $filtered_content = implode("\n", array_slice($filtered_lines, -100)); // آخرین 100 خط
+
+                echo '<p><strong>مسیر فایل:</strong> <code>' . $log_file . '</code></p>';
+                echo '<p><strong>آخرین لاگ‌های مرتبط (100 خط):</strong></p>';
+
+                if (!empty($filtered_content)) {
+                    echo '<div class="debug-output" id="debug-log" style="max-height: 600px;">';
+                    echo esc_html($filtered_content);
+                    echo '</div>';
+                    echo '<button class="copy-btn" onclick="copyToClipboard(\'debug-log\')">📋 کپی لاگ‌ها</button>';
+                } else {
+                    echo '<div class="alert alert-warning">هیچ لاگ مرتبطی یافت نشد. برای فعال کردن لاگ‌ها، JETBOOKING_SMS_DEBUG را true کنید.</div>';
+                }
+
+                echo '<hr>';
+                echo '<h3>تمام لاگ‌ها (1000 خط آخر)</h3>';
+                $all_lines = array_slice($lines, -1000);
+                echo '<div class="debug-output" id="all-logs" style="max-height: 400px;">';
+                echo esc_html(implode("\n", $all_lines));
+                echo '</div>';
+                echo '<button class="copy-btn" onclick="copyToClipboard(\'all-logs\')">📋 کپی همه</button>';
+
+            } else {
+                echo '<div class="alert alert-danger">فایل debug.log یافت نشد! برای فعال کردن: در wp-config.php این کدها را اضافه کنید:';
+                echo '<pre>define(\'WP_DEBUG\', true);
+define(\'WP_DEBUG_LOG\', true);
+define(\'WP_DEBUG_DISPLAY\', false);</pre>';
+                echo '</div>';
+            }
+            ?>
+
+            <hr>
+
+            <h3>⚙️ فعال کردن حالت Debug</h3>
+            <p>برای دریافت لاگ‌های دقیق، در فایل افزونه خط 28 را تغییر دهید:</p>
+            <pre>define('JETBOOKING_SMS_DEBUG', true);</pre>
+
+            <?php if (JETBOOKING_SMS_DEBUG): ?>
+                <div class="alert alert-success">✅ حالت Debug فعال است!</div>
+            <?php else: ?>
+                <div class="alert alert-warning">⚠️ حالت Debug غیرفعال است. برای دریافت لاگ‌های دقیق، آن را فعال کنید.</div>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * تب راهنما
+     */
+    private function render_guide_tab() {
+        ?>
+        <div class="card">
+            <h2>📖 راهنمای کامل استفاده</h2>
+
+            <h3>1️⃣ مرحله اول: بررسی وضعیت</h3>
+            <p>به تب <strong>داشبورد</strong> بروید و مطمئن شوید که:</p>
+            <ul>
+                <li>✅ ووکامرس فعال است</li>
+                <li>✅ JetBooking یا JetABAF فعال است</li>
+            </ul>
+
+            <h3>2️⃣ مرحله دوم: بررسی فیلترها</h3>
+            <p>به تب <strong>فیلترها</strong> بروید و ببینید کدام فیلترهای SMS در سیستم شما فعال هستند.</p>
+
+            <h3>3️⃣ مرحله سوم: تست با یک سفارش</h3>
+            <p>به تب <strong>تست</strong> بروید و یک سفارش را انتخاب کنید. اطلاعات زیر را بررسی کنید:</p>
+            <ul>
+                <li>متادیتای سفارش</li>
+                <li>متادیتای آیتم‌های سفارش</li>
+                <li>اطلاعات رزرو استخراج شده</li>
+                <li>متن پیامک پردازش شده</li>
+            </ul>
+
+            <h3>4️⃣ مرحله چهارم: استفاده از متغیرها</h3>
+            <p>در تنظیمات افزونه پیامکی خود، از این متغیرها استفاده کنید:</p>
+            <ul>
+                <li><code>{booking_info}</code> - برای نمایش تمام اطلاعات</li>
+                <li><code>{hotel_name}</code> - برای نام هتل</li>
+                <li><code>{room_name}</code> - برای نام اتاق</li>
+                <li><code>{checkin_date}</code> - برای تاریخ ورود</li>
+                <li><code>{checkout_date}</code> - برای تاریخ خروج</li>
+                <li><code>{nights}</code> - برای تعداد شب</li>
+            </ul>
+
+            <h3>5️⃣ رفع مشکل</h3>
+            <p>اگر متغیرها کار نمی‌کنند:</p>
+            <ol>
+                <li>حالت Debug را فعال کنید</li>
+                <li>یک سفارش تستی ثبت کنید</li>
+                <li>به تب <strong>لاگ‌ها</strong> بروید و لاگ‌ها را بررسی کنید</li>
+                <li>به تب <strong>تست</strong> بروید و اطلاعات سفارش را کپی کنید</li>
+                <li>اطلاعات را برای پشتیبانی ارسال کنید</li>
+            </ol>
+        </div>
+
+        <div class="card" style="background: #e3f2fd; border-left: 4px solid #2196f3;">
+            <h2>💡 نکات مهم</h2>
+            <ul>
+                <li>🔄 سفارش‌های قدیمی (قبل از نصب افزونه) ممکن است اطلاعات رزرو نداشته باشند</li>
+                <li>⚙️ برای تست، حتماً یک سفارش <strong>جدید</strong> ثبت کنید</li>
+                <li>📋 اگر مشکلی دارید، از تب <strong>تست</strong> اطلاعات کامل را کپی کرده و ارسال کنید</li>
+                <li>🔍 برای دیباگ بهتر، حالت Debug را فعال کنید</li>
+            </ul>
+        </div>
         <?php
     }
 
