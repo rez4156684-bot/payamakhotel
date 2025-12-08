@@ -1,0 +1,21 @@
+# Dependency directories
+node_modules/
+vendor/
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build files
+*.map
+*.log
+
+# Temporary files
+*.tmp
+*.temp
