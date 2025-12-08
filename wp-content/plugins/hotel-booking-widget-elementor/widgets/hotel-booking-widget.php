@@ -12,48 +12,30 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * ویجیت رزرو هتل
+ * ویجیت رزرو هتل - یکپارچه با WC Hotel Reservation System
  */
 class Hotel_Booking_Widget extends Widget_Base {
 
-    /**
-     * نام ویجیت
-     */
     public function get_name() {
         return 'hotel-booking-widget';
     }
 
-    /**
-     * عنوان ویجیت
-     */
     public function get_title() {
-        return __('رزرو هتل', 'hotel-booking-widget');
+        return __('رزرو هتل (یکپارچه)', 'hotel-booking-widget');
     }
 
-    /**
-     * آیکون ویجیت
-     */
     public function get_icon() {
         return 'eicon-site-identity';
     }
 
-    /**
-     * دسته‌بندی ویجیت
-     */
     public function get_categories() {
         return array('hotel-booking');
     }
 
-    /**
-     * کلمات کلیدی
-     */
     public function get_keywords() {
-        return array('hotel', 'booking', 'هتل', 'رزرو', 'اتاق');
+        return array('hotel', 'booking', 'هتل', 'رزرو', 'اتاق', 'reservation');
     }
 
-    /**
-     * ثبت کنترل‌ها
-     */
     protected function register_controls() {
         // بخش محتوا
         $this->start_controls_section(
@@ -64,15 +46,28 @@ class Hotel_Booking_Widget extends Widget_Base {
             )
         );
 
-        // انتخاب محصول
         $this->add_control(
             'product_id',
             array(
                 'label' => __('محصول هتل', 'hotel-booking-widget'),
                 'type' => Controls_Manager::SELECT2,
-                'options' => $this->get_woocommerce_products(),
+                'options' => $this->get_hotel_products(),
                 'default' => '',
                 'label_block' => true,
+                'description' => __('فقط محصولاتی که سیستم رزرو فعال دارند', 'hotel-booking-widget'),
+            )
+        );
+
+        $this->add_control(
+            'use_current_product',
+            array(
+                'label' => __('استفاده از محصول جاری', 'hotel-booking-widget'),
+                'type' => Controls_Manager::SWITCHER,
+                'label_on' => __('بله', 'hotel-booking-widget'),
+                'label_off' => __('خیر', 'hotel-booking-widget'),
+                'return_value' => 'yes',
+                'default' => 'no',
+                'description' => __('برای استفاده در قالب Single Product', 'hotel-booking-widget'),
             )
         );
 
@@ -101,14 +96,15 @@ class Hotel_Booking_Widget extends Widget_Base {
         );
 
         $this->add_control(
-            'show_amenities',
+            'hide_default_elements',
             array(
-                'label' => __('نمایش امکانات', 'hotel-booking-widget'),
+                'label' => __('مخفی کردن المان‌های پیش‌فرض', 'hotel-booking-widget'),
                 'type' => Controls_Manager::SWITCHER,
                 'label_on' => __('بله', 'hotel-booking-widget'),
                 'label_off' => __('خیر', 'hotel-booking-widget'),
                 'return_value' => 'yes',
                 'default' => 'yes',
+                'description' => __('مخفی کردن عکس، نام، قیمت و دکمه پیش‌فرض ووکامرس', 'hotel-booking-widget'),
             )
         );
 
@@ -130,7 +126,7 @@ class Hotel_Booking_Widget extends Widget_Base {
                 'type' => Controls_Manager::COLOR,
                 'default' => '#ffffff',
                 'selectors' => array(
-                    '{{WRAPPER}} .hbw-hotel-card' => 'background-color: {{VALUE}};',
+                    '{{WRAPPER}} .hbw-integrated-card' => 'background-color: {{VALUE}};',
                 ),
             )
         );
@@ -139,7 +135,7 @@ class Hotel_Booking_Widget extends Widget_Base {
             Group_Control_Border::get_type(),
             array(
                 'name' => 'card_border',
-                'selector' => '{{WRAPPER}} .hbw-hotel-card',
+                'selector' => '{{WRAPPER}} .hbw-integrated-card',
             )
         );
 
@@ -156,10 +152,10 @@ class Hotel_Booking_Widget extends Widget_Base {
                     ),
                 ),
                 'default' => array(
-                    'size' => 12,
+                    'size' => 16,
                 ),
                 'selectors' => array(
-                    '{{WRAPPER}} .hbw-hotel-card' => 'border-radius: {{SIZE}}{{UNIT}};',
+                    '{{WRAPPER}} .hbw-integrated-card' => 'border-radius: {{SIZE}}{{UNIT}};',
                 ),
             )
         );
@@ -168,50 +164,7 @@ class Hotel_Booking_Widget extends Widget_Base {
             Group_Control_Box_Shadow::get_type(),
             array(
                 'name' => 'card_box_shadow',
-                'selector' => '{{WRAPPER}} .hbw-hotel-card',
-            )
-        );
-
-        $this->end_controls_section();
-
-        // استایل دکمه
-        $this->start_controls_section(
-            'button_style_section',
-            array(
-                'label' => __('استایل دکمه', 'hotel-booking-widget'),
-                'tab' => Controls_Manager::TAB_STYLE,
-            )
-        );
-
-        $this->add_control(
-            'button_background',
-            array(
-                'label' => __('رنگ پس‌زمینه دکمه', 'hotel-booking-widget'),
-                'type' => Controls_Manager::COLOR,
-                'default' => '#0066cc',
-                'selectors' => array(
-                    '{{WRAPPER}} .hbw-booking-form button[type="submit"]' => 'background-color: {{VALUE}};',
-                ),
-            )
-        );
-
-        $this->add_control(
-            'button_text_color',
-            array(
-                'label' => __('رنگ متن دکمه', 'hotel-booking-widget'),
-                'type' => Controls_Manager::COLOR,
-                'default' => '#ffffff',
-                'selectors' => array(
-                    '{{WRAPPER}} .hbw-booking-form button[type="submit"]' => 'color: {{VALUE}};',
-                ),
-            )
-        );
-
-        $this->add_group_control(
-            Group_Control_Typography::get_type(),
-            array(
-                'name' => 'button_typography',
-                'selector' => '{{WRAPPER}} .hbw-booking-form button[type="submit"]',
+                'selector' => '{{WRAPPER}} .hbw-integrated-card',
             )
         );
 
@@ -219,9 +172,9 @@ class Hotel_Booking_Widget extends Widget_Base {
     }
 
     /**
-     * دریافت لیست محصولات ووکامرس
+     * دریافت لیست محصولات هتل
      */
-    private function get_woocommerce_products() {
+    private function get_hotel_products() {
         $products = array('' => __('انتخاب محصول', 'hotel-booking-widget'));
 
         $args = array(
@@ -229,6 +182,13 @@ class Hotel_Booking_Widget extends Widget_Base {
             'posts_per_page' => -1,
             'orderby' => 'title',
             'order' => 'ASC',
+            'meta_query' => array(
+                array(
+                    'key' => '_enable_hotel_reservation',
+                    'value' => 'yes',
+                    'compare' => '='
+                )
+            )
         );
 
         $query = new \WP_Query($args);
@@ -249,38 +209,95 @@ class Hotel_Booking_Widget extends Widget_Base {
      */
     protected function render() {
         $settings = $this->get_settings_for_display();
-        $product_id = $settings['product_id'];
+
+        // تشخیص محصول
+        if ($settings['use_current_product'] === 'yes' && is_singular('product')) {
+            global $post;
+            $product_id = $post->ID;
+        } else {
+            $product_id = $settings['product_id'];
+        }
 
         if (empty($product_id)) {
             if (\Elementor\Plugin::$instance->editor->is_edit_mode()) {
-                echo '<div class="hbw-notice">' . __('لطفاً یک محصول انتخاب کنید', 'hotel-booking-widget') . '</div>';
+                echo '<div class="hbw-notice">' . __('لطفاً یک محصول هتل انتخاب کنید', 'hotel-booking-widget') . '</div>';
+            }
+            return;
+        }
+
+        // بررسی فعال بودن سیستم رزرو
+        $reservation_enabled = get_post_meta($product_id, '_enable_hotel_reservation', true);
+        if ($reservation_enabled !== 'yes') {
+            if (\Elementor\Plugin::$instance->editor->is_edit_mode()) {
+                echo '<div class="hbw-notice">' . __('سیستم رزرو برای این محصول فعال نیست', 'hotel-booking-widget') . '</div>';
             }
             return;
         }
 
         $product = wc_get_product($product_id);
-
         if (!$product) {
             echo '<div class="hbw-notice">' . __('محصول یافت نشد', 'hotel-booking-widget') . '</div>';
             return;
         }
 
-        $this->render_hotel_card($product, $settings);
+        // مخفی کردن المان‌های پیش‌فرض
+        if ($settings['hide_default_elements'] === 'yes') {
+            $this->hide_default_woocommerce_elements();
+        }
+
+        $this->render_integrated_hotel_card($product, $product_id, $settings);
     }
 
     /**
-     * رندر کارت هتل
+     * مخفی کردن المان‌های پیش‌فرض ووکامرس
      */
-    private function render_hotel_card($product, $settings) {
-        $product_id = $product->get_id();
+    private function hide_default_woocommerce_elements() {
+        ?>
+        <style>
+            /* مخفی کردن المان‌های پیش‌فرض ووکامرس */
+            .product .woocommerce-product-gallery,
+            .product .entry-title,
+            .product .price,
+            .product .product_meta,
+            .product form.cart,
+            .product .quantity,
+            .product .single_add_to_cart_button,
+            .product .woocommerce-product-rating,
+            .product .woocommerce-breadcrumb {
+                display: none !important;
+            }
+
+            /* نگه داشتن تب‌های محصول */
+            .woocommerce-tabs {
+                display: none !important;
+            }
+        </style>
+        <?php
+    }
+
+    /**
+     * رندر کارت یکپارچه هتل
+     */
+    private function render_integrated_hotel_card($product, $product_id, $settings) {
+        // دریافت داده‌های هتل از افزونه Hotel Reservation
+        $rooms = get_post_meta($product_id, '_hotel_rooms', true) ?: [];
+        $amenities = get_post_meta($product_id, '_hotel_amenities', true) ?: [];
+        $check_in = get_post_meta($product_id, '_hotel_check_in_time', true) ?: '14:00';
+        $check_out = get_post_meta($product_id, '_hotel_check_out_time', true) ?: '12:00';
+        $rating = get_post_meta($product_id, '_hotel_rating', true);
+        $rules = get_post_meta($product_id, '_hotel_rules', true);
+
+        // اطلاعات محصول ووکامرس
         $product_name = $product->get_name();
-        $product_price = $product->get_price();
         $product_image = wp_get_attachment_url($product->get_image_id());
         $product_gallery = $product->get_gallery_image_ids();
         $product_description = $product->get_short_description();
+        if (empty($product_description)) {
+            $product_description = $product->get_description();
+        }
         ?>
 
-        <div class="hbw-hotel-card" data-product-id="<?php echo esc_attr($product_id); ?>">
+        <div class="hbw-integrated-card" data-product-id="<?php echo esc_attr($product_id); ?>">
 
             <?php if ($settings['show_gallery'] === 'yes' && $product_image): ?>
             <!-- گالری تصاویر -->
@@ -288,7 +305,17 @@ class Hotel_Booking_Widget extends Widget_Base {
                 <div class="hbw-gallery-main">
                     <img src="<?php echo esc_url($product_image); ?>" alt="<?php echo esc_attr($product_name); ?>" class="hbw-main-image">
                     <div class="hbw-gallery-badge">
-                        <span class="hbw-badge-featured">⭐ پیشنهاد ویژه</span>
+                        <?php if ($rating): ?>
+                            <span class="hbw-badge-rating">
+                                <?php
+                                if (is_numeric($rating) && $rating > 0) {
+                                    echo str_repeat('⭐', intval($rating));
+                                } else {
+                                    echo esc_html($rating);
+                                }
+                                ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -318,169 +345,343 @@ class Hotel_Booking_Widget extends Widget_Base {
                 <div class="hbw-info-section">
                     <div class="hbw-header">
                         <h2 class="hbw-title"><?php echo esc_html($product_name); ?></h2>
-                        <div class="hbw-rating">
-                            <span class="hbw-stars">★★★★★</span>
-                            <span class="hbw-rating-text">(۴.۸ از ۵)</span>
+                        <div class="hbw-check-times">
+                            <span>ورود: <?php echo esc_html($check_in); ?></span>
+                            <span>خروج: <?php echo esc_html($check_out); ?></span>
                         </div>
                     </div>
 
                     <?php if ($settings['show_description'] === 'yes' && $product_description): ?>
                     <div class="hbw-description">
-                        <p><?php echo wp_kses_post($product_description); ?></p>
+                        <?php echo wp_kses_post($product_description); ?>
                     </div>
                     <?php endif; ?>
 
-                    <?php if ($settings['show_amenities'] === 'yes'): ?>
-                    <!-- امکانات -->
+                    <?php if (!empty($amenities)): ?>
+                    <!-- امکانات از افزونه Hotel Reservation -->
                     <div class="hbw-amenities">
-                        <h3 class="hbw-amenities-title">امکانات اتاق</h3>
+                        <h3 class="hbw-amenities-title">امکانات هتل</h3>
                         <div class="hbw-amenities-grid">
-                            <?php
-                            // امکانات پیش‌فرض - در نسخه بعدی می‌توان از متافیلد استفاده کرد
-                            $default_amenities = array(
-                                array('icon' => '📶', 'text' => 'وای‌فای رایگان'),
-                                array('icon' => '❄️', 'text' => 'تهویه مطبوع'),
-                                array('icon' => '📺', 'text' => 'تلویزیون'),
-                                array('icon' => '🚿', 'text' => 'حمام اختصاصی'),
-                                array('icon' => '☕', 'text' => 'چای و قهوه'),
-                                array('icon' => '🅿️', 'text' => 'پارکینگ رایگان'),
-                            );
-
-                            foreach ($default_amenities as $amenity):
-                            ?>
+                            <?php foreach ($amenities as $amenity): ?>
                                 <div class="hbw-amenity-item">
-                                    <span class="hbw-amenity-icon"><?php echo $amenity['icon']; ?></span>
-                                    <span class="hbw-amenity-text"><?php echo esc_html($amenity['text']); ?></span>
+                                    <span class="hbw-amenity-icon"><?php echo isset($amenity['icon']) ? $amenity['icon'] : '✓'; ?></span>
+                                    <span class="hbw-amenity-text"><?php echo esc_html(isset($amenity['text']) ? $amenity['text'] : $amenity); ?></span>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     </div>
                     <?php endif; ?>
+
+                    <?php if ($rules): ?>
+                    <!-- قوانین هتل -->
+                    <div class="hbw-rules">
+                        <h3 class="hbw-rules-title">قوانین و مقررات</h3>
+                        <div class="hbw-rules-content">
+                            <?php echo nl2br(esc_html($rules)); ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
-                <!-- فرم رزرو -->
+                <!-- بخش رزرو - استفاده از سیستم اصلی -->
                 <div class="hbw-booking-section">
-                    <div class="hbw-booking-card">
-                        <div class="hbw-price-section">
-                            <div class="hbw-price-wrapper">
-                                <span class="hbw-price"><?php echo wc_price($product_price); ?></span>
-                                <span class="hbw-price-unit">/ هر شب</span>
-                            </div>
-                        </div>
-
-                        <form class="hbw-booking-form" method="post" action="<?php echo esc_url(wc_get_cart_url()); ?>">
-
-                            <!-- انتخاب تاریخ -->
-                            <div class="hbw-date-section">
-                                <div class="hbw-date-group">
-                                    <label for="checkin-<?php echo esc_attr($product_id); ?>" class="hbw-label">
-                                        📅 تاریخ ورود
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="checkin-<?php echo esc_attr($product_id); ?>"
-                                        name="checkin_date"
-                                        class="hbw-date-input hbw-checkin"
-                                        placeholder="انتخاب تاریخ ورود"
-                                        required
-                                        readonly
-                                    >
-                                </div>
-
-                                <div class="hbw-date-divider">→</div>
-
-                                <div class="hbw-date-group">
-                                    <label for="checkout-<?php echo esc_attr($product_id); ?>" class="hbw-label">
-                                        📅 تاریخ خروج
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="checkout-<?php echo esc_attr($product_id); ?>"
-                                        name="checkout_date"
-                                        class="hbw-date-input hbw-checkout"
-                                        placeholder="انتخاب تاریخ خروج"
-                                        required
-                                        readonly
-                                    >
-                                </div>
-                            </div>
-
-                            <!-- انتخاب تعداد مهمان -->
-                            <div class="hbw-guests-section">
-                                <div class="hbw-guest-group">
-                                    <label for="adults-<?php echo esc_attr($product_id); ?>" class="hbw-label">
-                                        👤 بزرگسال
-                                    </label>
-                                    <select id="adults-<?php echo esc_attr($product_id); ?>" name="adults" class="hbw-select">
-                                        <?php for ($i = 1; $i <= 10; $i++): ?>
-                                            <option value="<?php echo $i; ?>" <?php selected($i, 2); ?>><?php echo $i; ?></option>
-                                        <?php endfor; ?>
-                                    </select>
-                                </div>
-
-                                <div class="hbw-guest-group">
-                                    <label for="children-<?php echo esc_attr($product_id); ?>" class="hbw-label">
-                                        👶 کودک
-                                    </label>
-                                    <select id="children-<?php echo esc_attr($product_id); ?>" name="children" class="hbw-select">
-                                        <?php for ($i = 0; $i <= 5; $i++): ?>
-                                            <option value="<?php echo $i; ?>"><?php echo $i; ?></option>
-                                        <?php endfor; ?>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- نمایش خلاصه -->
-                            <div class="hbw-summary">
-                                <div class="hbw-summary-row">
-                                    <span class="hbw-summary-label">تعداد شب:</span>
-                                    <span class="hbw-summary-value hbw-nights-count">0</span>
-                                </div>
-                                <div class="hbw-summary-row">
-                                    <span class="hbw-summary-label">قیمت هر شب:</span>
-                                    <span class="hbw-summary-value"><?php echo wc_price($product_price); ?></span>
-                                </div>
-                                <div class="hbw-summary-row hbw-summary-total">
-                                    <span class="hbw-summary-label">جمع کل:</span>
-                                    <span class="hbw-summary-value hbw-total-price"><?php echo wc_price(0); ?></span>
-                                </div>
-                            </div>
-
-                            <!-- دکمه رزرو -->
-                            <input type="hidden" name="add-to-cart" value="<?php echo esc_attr($product_id); ?>">
-                            <input type="hidden" name="product_id" value="<?php echo esc_attr($product_id); ?>">
-                            <input type="hidden" name="quantity" value="1">
-
-                            <button type="submit" class="hbw-booking-button">
-                                <span class="hbw-button-icon">🔒</span>
-                                <span class="hbw-button-text">رزرو قطعی</span>
-                            </button>
-
-                            <div class="hbw-booking-note">
-                                ✓ رزرو آنی و بدون پرداخت
-                            </div>
-                        </form>
+                    <div class="hbw-booking-notice">
+                        <p>⬇️ برای مشاهده اتاق‌ها و رزرو، به پایین صفحه بروید</p>
                     </div>
 
-                    <!-- ویژگی‌های اضافی -->
-                    <div class="hbw-features">
-                        <div class="hbw-feature-item">
-                            <span class="hbw-feature-icon">✓</span>
-                            <span class="hbw-feature-text">لغو رایگان تا ۲۴ ساعت قبل</span>
-                        </div>
-                        <div class="hbw-feature-item">
-                            <span class="hbw-feature-icon">✓</span>
-                            <span class="hbw-feature-text">بدون نیاز به پرداخت آنلاین</span>
-                        </div>
-                        <div class="hbw-feature-item">
-                            <span class="hbw-feature-icon">✓</span>
-                            <span class="hbw-feature-text">تضمین بهترین قیمت</span>
-                        </div>
+                    <?php if (!empty($rooms)): ?>
+                    <div class="hbw-rooms-preview">
+                        <h4>اتاق‌های موجود (<?php echo count($rooms); ?>)</h4>
+                        <ul>
+                            <?php foreach ($rooms as $room): ?>
+                                <li>
+                                    <strong><?php echo esc_html($room['name']); ?></strong>
+                                    <span><?php echo number_format($room['base_price']); ?> تومان/شب</span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
                     </div>
+                    <?php endif; ?>
                 </div>
 
             </div>
         </div>
+
+        <!-- اضافه کردن استایل‌های یکپارچه -->
+        <style>
+            .hbw-integrated-card {
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+                margin-bottom: 30px;
+            }
+
+            .hbw-gallery {
+                position: relative;
+                width: 100%;
+            }
+
+            .hbw-gallery-main {
+                position: relative;
+                width: 100%;
+                height: 400px;
+                overflow: hidden;
+            }
+
+            .hbw-main-image {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transition: transform 0.5s ease;
+            }
+
+            .hbw-gallery-main:hover .hbw-main-image {
+                transform: scale(1.05);
+            }
+
+            .hbw-gallery-badge {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                z-index: 2;
+            }
+
+            .hbw-badge-rating {
+                background: rgba(255, 255, 255, 0.95);
+                color: #FFD700;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 16px;
+                font-weight: 600;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            }
+
+            .hbw-gallery-thumbnails {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                padding: 12px;
+                background: #f9fafb;
+            }
+
+            .hbw-thumb {
+                width: 100%;
+                height: 80px;
+                object-fit: cover;
+                border-radius: 8px;
+                cursor: pointer;
+                border: 2px solid transparent;
+                transition: all 0.3s ease;
+            }
+
+            .hbw-thumb:hover,
+            .hbw-thumb.active {
+                border-color: #667eea;
+                transform: translateY(-2px);
+            }
+
+            .hbw-card-content {
+                padding: 30px;
+            }
+
+            .hbw-header {
+                margin-bottom: 20px;
+                padding-bottom: 20px;
+                border-bottom: 2px solid #f3f4f6;
+            }
+
+            .hbw-title {
+                font-size: 28px;
+                font-weight: 700;
+                color: #1f2937;
+                margin: 0 0 12px 0;
+                line-height: 1.3;
+            }
+
+            .hbw-check-times {
+                display: flex;
+                gap: 20px;
+                color: #6b7280;
+                font-size: 14px;
+            }
+
+            .hbw-check-times span {
+                background: #f3f4f6;
+                padding: 6px 12px;
+                border-radius: 6px;
+            }
+
+            .hbw-description {
+                margin-bottom: 24px;
+                padding-bottom: 24px;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            .hbw-description p {
+                color: #4b5563;
+                line-height: 1.8;
+                margin: 0;
+                font-size: 15px;
+            }
+
+            .hbw-amenities {
+                margin-bottom: 24px;
+            }
+
+            .hbw-amenities-title,
+            .hbw-rules-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: #1f2937;
+                margin: 0 0 16px 0;
+            }
+
+            .hbw-amenities-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 12px;
+            }
+
+            .hbw-amenity-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 12px;
+                background: #f9fafb;
+                border-radius: 8px;
+                transition: all 0.3s ease;
+            }
+
+            .hbw-amenity-item:hover {
+                background: #f3f4f6;
+                transform: translateX(-3px);
+            }
+
+            .hbw-amenity-icon {
+                font-size: 20px;
+            }
+
+            .hbw-amenity-text {
+                font-size: 14px;
+                color: #1f2937;
+            }
+
+            .hbw-rules {
+                margin-top: 24px;
+                padding: 20px;
+                background: #fef3c7;
+                border-radius: 12px;
+                border: 1px solid #fbbf24;
+            }
+
+            .hbw-rules-content {
+                color: #92400e;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+
+            .hbw-booking-notice {
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                padding: 20px;
+                border-radius: 12px;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+
+            .hbw-booking-notice p {
+                margin: 0;
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+            .hbw-rooms-preview {
+                background: #f9fafb;
+                padding: 20px;
+                border-radius: 12px;
+            }
+
+            .hbw-rooms-preview h4 {
+                margin: 0 0 15px 0;
+                color: #1f2937;
+            }
+
+            .hbw-rooms-preview ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            .hbw-rooms-preview li {
+                display: flex;
+                justify-content: space-between;
+                padding: 10px 0;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            .hbw-rooms-preview li:last-child {
+                border-bottom: none;
+            }
+
+            .hbw-rooms-preview span {
+                color: #10b981;
+                font-weight: 600;
+            }
+
+            /* ریسپانسیو */
+            @media screen and (max-width: 767px) {
+                .hbw-gallery-main {
+                    height: 250px;
+                }
+
+                .hbw-gallery-thumbnails {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+
+                .hbw-card-content {
+                    padding: 20px;
+                }
+
+                .hbw-title {
+                    font-size: 22px;
+                }
+
+                .hbw-amenities-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .hbw-check-times {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+            }
+
+            @media screen and (max-width: 599px) {
+                .hbw-gallery-thumbnails {
+                    display: none;
+                }
+
+                .hbw-card-content {
+                    padding: 15px;
+                }
+            }
+        </style>
+
+        <!-- اضافه کردن JavaScript برای گالری -->
+        <script>
+        jQuery(document).ready(function($) {
+            // تعویض تصویر اصلی
+            $('.hbw-thumb').on('click', function() {
+                var newSrc = $(this).attr('src');
+                var $card = $(this).closest('.hbw-integrated-card');
+                $card.find('.hbw-main-image').attr('src', newSrc);
+                $card.find('.hbw-thumb').removeClass('active');
+                $(this).addClass('active');
+            });
+        });
+        </script>
 
         <?php
     }
